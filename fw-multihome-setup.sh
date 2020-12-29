@@ -8,7 +8,7 @@ ip link set up dev $LAN_IFACE || {
 	exit 1
 }
 
-ip addr add $LAN_IP dev $LAN_IFACE || {
+ip addr add $LAN_IP/$LAN_NETMASK dev $LAN_IFACE || {
 	printf "Failed to add ip to LAN i/f\n" > /dev/stderr
 	exit 1
 }
@@ -18,7 +18,7 @@ ip link set up dev $DMZ_IFACE || { \
 	exit 1
 }
 
-ip addr add $DMZ_IP dev $DMZ_IFACE || {
+ip addr add $DMZ_IP/$DMZ_NETMASK dev $DMZ_IFACE || {
 	printf "Failed to add ip to DMZ i/f\n" > /dev/stderr
 	exit 1
 }
