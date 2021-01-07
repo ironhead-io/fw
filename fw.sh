@@ -57,12 +57,21 @@ SSH_PORT=
 SSH_ALLOWED_IP=
 LOG_PATH=
 
-# TODO: All of these extra ports are going to be hard to maintain...
-# SSH_PORT
-# SSH_PORT
+# TODO: All of these extra ports MAY get hard to maintain...
+# Coming up with a way to enable and disable common services would probably be easiest
+ENABLE_SSH=
+ENABLE_HTTP=
+ENABLE_HTTPS=
+# TODO: None of these are quite done yet
+#ENABLE_FTP=
+#ENABLE_SFTP=
+#ENABLE_ICMP=
+#ENABLE_IMAP=
+#ENABLE_POP=
+#ENABLE_SMTP=
 
 # Mark actions seperately (these would be const enums or something in C)
-DO_DEFAULT=1
+DO_DEFAULT=0
 DO_DUMP=1
 DO_STOP=2
 DO_SINGLE_HOME=3
@@ -193,7 +202,7 @@ function set_logdrop_spoof() {
 	$IPT -A INPUT -i $WAN_IFACE -s $IP_ADDRESS -j DROP
 
 	# Drop packets coming from any class A, B or C addresses
-	#$IPT -A INPUT -i $WAN_IFACE -s $CLASS_A -j DROP 
+	$IPT -A INPUT -i $WAN_IFACE -s $CLASS_A -j DROP 
 	$IPT -A INPUT -i $WAN_IFACE -s $CLASS_B -j DROP 
 	$IPT -A INPUT -i $WAN_IFACE -s $CLASS_C -j DROP 
 
@@ -437,6 +446,8 @@ function set_log_all_outgoing_dropped() {
 function show_help() {
 	cat <<EOF
 Usage: ./fw [options]
+
+Arguments:
 -w, --wan <arg:[ip]>      Specify the WAN interface (& an optional IP address)
 -d, --dmz <arg:[ip]>      Specify the DMZ interface (& an optional IP address)
 -l, --lan <arg:[ip]>      Specify the LAN interface (& an optional IP address)
@@ -447,11 +458,17 @@ Usage: ./fw [options]
 -b, --subnet-base <arg>   Specify a subnet base
 -c, --subnet-bcast <arg>  Specify a subnet broadcast
 -p, --log-path <arg>      Specify an alternate log path for firewall messages 
+
+Actions:
 -x, --dump                Dump the currently loaded variables 
     --deny                Flush any rules and go back to deny-by-default policy.
     --stop                Totally stop the firewall.
     --single-home         Start a single home firewall.
     --multi-home          Start a multi home firewall.
+
+Common Ports:
+    --http                Enable default HTTP port.
+    --https               Enable default HTTPS port.
 -h, --help                Show help.
 EOF
 	exit ${1:-0}
@@ -538,7 +555,8 @@ do
 			then
 				printf "fw: No argument specified for --ssh flag\n" > /dev/stderr
 				exit 1
-			else 	
+			else
+				ENABLE_SSH=1
 				STMP=( `chop_at_colon "$1"` )
 				if [ ${#STMP} -eq 1 ]
 				then
@@ -597,6 +615,15 @@ do
 
 		--multi-home)
 			ACTION=$DO_MULTI_HOME
+		;;
+
+		# Options for common port associations go here
+		--http)
+			ENABLE_HTTP=1	
+		;;
+
+		--https)
+			ENABLE_HTTPS=1	
 		;;
 
 		-h|--help)
@@ -674,9 +701,11 @@ then
 	set_logdrop_spoof
 	set_disallow_common_services
 	set_allow_dns
-	set_allow_incoming_ssh $SSH_PORT $SSH_ALLOWED_IP
-	set_allow_outgoing_generic_tcp 80 443
-	set_allow_incoming_generic_tcp 80 443
+	test ! -z $ENABLE_SSH && set_allow_incoming_ssh $SSH_PORT $SSH_ALLOWED_IP
+	test ! -z $ENABLE_HTTP && set_allow_outgoing_generic_tcp 80
+	test ! -z $ENABLE_HTTP && set_allow_incoming_generic_tcp 80
+	test ! -z $ENABLE_HTTPS && set_allow_outgoing_generic_tcp 443
+	test ! -z $ENABLE_HTTPS && set_allow_incoming_generic_tcp 443
 	#set_log_all_incoming_dropped
 	#set_log_all_outgoing_dropped
 	exit 0;
