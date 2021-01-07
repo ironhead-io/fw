@@ -21,6 +21,11 @@
 # Todo: 
 # - Get SUBNET_BASE added in 
 # - Get ISP added in 
+# - Add ipv6 support
+# - Get ISP added in 
+# - Split out "recipes" into their own files?
+# - Change the log path
+# - Read from the log, and handle rotation
 # 
 
 # Stop at unset variable usage
@@ -67,6 +72,20 @@ then
 	printf "Please install 'iptables' before moving forward.\n" > /dev/stderr
 	exit 0
 fi
+
+
+# Utility to extract IP from one side of a variable
+function chop_at_colon() {
+	# Make an array
+	ARR=$1
+	WORD=0
+
+	# If the character is there, return one item, if not, return both
+	for n in `seq 0 $(( ${#ARR} - 1 ))`; do test ${ARR:$n:1} == ':' && WORD=1; done
+
+	# Return an array
+	test $WORD -eq 1 && echo ${ARR%%:*} ${ARR#*:} || echo $ARR	
+}
 
 
 # Dump the configuration settings (should die if unset)
@@ -385,6 +404,7 @@ EOF
 if [ $# -lt 1 ]
 then
 	printf "fw: No arguments specified...\n" > /dev/stderr
+	show_help
 	exit 1
 fi
 
@@ -396,7 +416,21 @@ do
 		# Set the internet interface
 		-w|--wan)
 			shift
-			WAN_IFACE="$1"
+			if [ -z "$1" ] 
+			then
+				printf "fw: No argument specified for --wan flag\n" > /dev/stderr
+				exit 1
+			else 	
+				WTMP=( `chop_at_colon "$1"` )
+				if [ ${#WTMP} -eq 1 ]
+				then
+					WAN_IFACE="$1"
+				elif [ ${#WTMP} -gt 1 ] 	
+				then
+					WAN_IFACE="${WTMP[0]}"
+					IP_ADDRESS="${WTMP[1]}"
+				fi
+			fi
 		;;
 
 		# Set the DMZ interface
@@ -465,20 +499,41 @@ do
 done
 
 
-
 # ...
 if [ -z $ACTION ]
 then 
 	printf "fw: no action specified, nothing to do.\n" > /dev/stderr;
 	exit 1;
+fi
+
+
+# ...
+if [ -z $IP_ADDRESS ]
+then 
+	printf "fw: no IP address specified for rule application.\n" > /dev/stderr;
+	exit 1;
+fi
+
+
+# ...
+if [ -z $WAN_IFACE ]
+then 
+	printf "fw: no WAN interface chosen.\n" > /dev/stderr;
+	exit 1;
+fi
+
 
 # Dump all the settings	
-elif [ $ACTION == $DO_DUMP ]
+if [ $ACTION == $DO_DUMP ]
 then
 	dump_settings
+	exit 0;
+fi
 
+
+# TODO: Check for root or elevated priveleges somehow, then die if not
 # Go back to a default drop-everything state
-elif [ $ACTION == $DO_DFLT ]
+if [ $ACTION == $DO_DFLT ]
 then
 	set_defaults	
 	set_drop
@@ -513,5 +568,3 @@ then
 fi
 
 exit 0;
-
-
