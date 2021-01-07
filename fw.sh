@@ -30,7 +30,7 @@
 
 # Stop at unset variable usage
 #set -u
-#set -ux
+set -x
 
 
 # Set default variables here
@@ -452,7 +452,7 @@ Arguments:
 -w, --wan <arg:[ip]>      Specify the WAN interface (& an optional IP address)
 -d, --dmz <arg:[ip]>      Specify the DMZ interface (& an optional IP address)
 -l, --lan <arg:[ip]>      Specify the LAN interface (& an optional IP address)
--s, --ssh <arg:[ip]>      Specify a port (& an optional IP address to listen 
+-a, --ssh <arg:[ip]>      Specify a port (& an optional IP address to listen 
                           out for) for SSH connections
 -i, --ip-address <arg>    Specify an IP for the WAN interface 
                           (if DMZ or LAN are not specified)
@@ -552,7 +552,7 @@ do
 		;;
 
 		# Set the LAN interface
-		-l|--lan)
+		-a|--ssh)
 			shift
 			if [ -z "$1" ] 
 			then
@@ -636,12 +636,12 @@ do
 						;;
 						*)
 							TCP_PORTS[ $TCP_PORT_COUNT ]=$1
-							if [ ! -z $2 ] && [ ${2:0:1} != '-' ]
+							if [ -z "$2" ] || [ ${2:0:1} == '-' ]
 							then 
+								break
+							else 
 								shift
 								TCP_PORT_COUNT=$(( $TCP_PORT_COUNT + 1 ))
-							else 
-								break
 							fi	
 						;;
 					esac
