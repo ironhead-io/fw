@@ -14,11 +14,18 @@
 # 
 # This script will assume this and make changes based on supplied arguments
 # rather than trying to invoke itself with the right hard-coded values at runtime. 
+#
+# Changelog: 
+# -
+#
+# Todo: 
+# - Get SUBNET_BASE added in 
+# - Get ISP added in 
 # 
 
 # Stop at unset variable usage
-set -u
-#set -ux
+#set -u
+set -ux
 
 
 # Set default variables here
@@ -175,8 +182,8 @@ function set_logdrop_spoof() {
 	$IPT -A INPUT -i $WAN_IFACE -s $BCAST_SRC -j DROP 
 	
 	# Refuse directed broadcasts (helps gauge effectiveness of a DoS attack)
-	$IPT -A INPUT -i $WAN_IFACE -d $SUBNET_BASE -j DROP
-	$IPT -A INPUT -i $WAN_IFACE -d $SUBNET_BCAST -j DROP
+	#$IPT -A INPUT -i $WAN_IFACE -d $SUBNET_BASE -j DROP
+	#$IPT -A INPUT -i $WAN_IFACE -d $SUBNET_BCAST -j DROP
 
 	# Refuse limited broadcasts
 	$IPT -A INPUT -i $WAN_IFACE -d $BCAST_DEST -j DROP
@@ -197,7 +204,7 @@ function set_logdrop_spoof() {
 
 # In case of compromise, make it impossible (or difficult) for
 # an intruder to connect to commonly running services
-function set_disallow_common_svcs() {
+function set_disallow_common_services () {
 	XWINDOW_PORTS="6000:6063" # Ports for TCP XWindow connections
 	$IPT -A OUTPUT -o $WAN_IFACE -p tcp --syn \
 		--destination-port $XWINDOW_PORTS -j REJECT
@@ -250,12 +257,10 @@ function set_allow_dns () {
 }
 
 
-
 # Allow mail (obviously, I'm not ready for this yet)
 function set_allow_mail() {
 	printf ''>/dev/null
 }
-
 
 
 # Allow SSH
@@ -274,7 +279,6 @@ function set_allow_ssh() {
 	$IPT -A OUTPUT -o $WAN_IFACE -p tcp ! --syn -s $IP_ADDRESS \
 		--sport $SSH_ACCESS_PORT --dport $SSH_PORTS -j ACCEPT
 }
-
 
 
 # Allow outgoing generic TCP connection
@@ -301,7 +305,6 @@ function set_allow_outgoing_generic_tcp() {
 }
 
 
-
 # Allow incoming generic TCP connection
 function set_allow_incoming_generic_tcp() {
 	PORT=$1
@@ -325,7 +328,6 @@ function set_allow_incoming_generic_tcp() {
 }
 
 
-
 # Allow outgoing connections to NTP
 function set_allow_ntp_outgoing() {
 	# If I use an external TIMESERVER
@@ -346,7 +348,6 @@ function set_allow_ntp_outgoing() {
 }
 
 
-
 # Allow logging of all dropped incoming packets
 function set_log_all_incoming_dropped() {
 	$IPT -A INPUT -i $WAN_IFACE -j LOG
@@ -358,6 +359,26 @@ function set_log_all_outgoing_dropped() {
 	$IPT -A OUTPUT -o $WAN_IFACE -j LOG
 }
 
+
+# Show help
+function show_help() {
+	cat <<EOF
+Usage: ./fw [options]
+-w, --wan <arg:[ip]>        Specify the WAN interface (& an optional IP address)
+-d, --dmz <arg:[ip]>        Specify the DMZ interface (& an optional IP address)
+-l, --lan <arg:[ip]>        Specify the LAN interface (& an optional IP address)
+-i, --ip-address <arg>      Specify an IP for the WAN interface 
+                            (if DMZ or LAN are not specified)
+-b, --subnet-base <arg>     Specify a subnet base
+-c, --subnet-bcast <arg>    Specify a subnet broadcast
+-p, --log-path <arg>        Specify an alternate log path for firewall messages 
+-x, --dump                  Dump the currently loaded variables 
+    --stop                  Totally stop the firewall.
+    --single-home           Start a single home firewall.
+    --multi-home            Start a multi home firewall.
+-h, --help                  Show help.
+EOF
+}
 
 
 # Die if no options specified
@@ -373,57 +394,79 @@ while [ $# -gt 0 ]
 do
 	case $1 in
 		# Set the internet interface
-		internet|wan)
+		-w|--wan)
 			shift
 			WAN_IFACE="$1"
 		;;
 
+		# Set the DMZ interface
+		-d|--dmz)
+			#shift
+			#DMZ_IFACE="$1"
+			printf "fw: DMZ interface logic not done yet...\n" > /dev/stderr
+			exit 1
+		;;
+
+		# Set the LAN interface
+		-l|--lan)
+			#shift
+			#LAN_IFACE="$1"
+			printf "fw: LAN interface logic not done yet...\n" > /dev/stderr
+			exit 1
+		;;
+
 		# My IP address
-		ip-address)
+		-i|--ip-address)
 			shift
 			IP_ADDRESS="$1"
 		;;
 
 		# Set subnet base
-		subnet-base)
+		-b|--subnet-base)
 			shift
 			SUBNET_BASE="$1"
 		;;
 
 		# Set subnet broadcast
-		subnet-bcast)
+		-c|--subnet-bcast)
 			shift
 			SUBNET_BCAST="$1"
 		;;
 
 		# Set an alternate logging path (for easy future access)
-		log-path)
+		-p|--log-path)
 			shift
 			LOG_PATH="$1"
 		;;
 
 		# Simply dump the options and stop
-		dump)
+		-x|--dump)
 			ACTION=$DO_DUMP
 		;;
 
 		# TODO: OK. From experience, this sucks... so let's try something different.
-		stop)
+		--stop)
 			ACTION=$DO_STOP
 		;;
 
-		single-home)
+		--single-home)
 			ACTION=$DO_SH
 		;;
 
-		multi-home)
+		--multi-home)
 			ACTION=$DO_MH
+		;;
+
+		-h|--help)
+			show_help
 		;;
 	esac
 	shift
 done
 
 
+
+# ...
 if [ -z $ACTION ]
 then 
 	printf "fw: no action specified, nothing to do.\n" > /dev/stderr;
@@ -448,11 +491,23 @@ then
 # Run rules for a single home firewall
 elif [ $ACTION == $DO_SH ]
 then
+	set_defaults	
+	set_drop
+	set_state_tracking
+	set_logdrop_spoof
+	set_disallow_common_services
+	set_allow_dns
+	set_allow_ssh
+	#set_allow_outgoing_generic_tcp 80 443
+	#set_allow_incoming_generic_tcp 80 443
+	#set_log_all_incoming_dropped
+	#set_log_all_outgoing_dropped
 	exit 0;
 
 # Run rules for a multi home firewall
 elif [ $ACTION == $DO_MH ]
 then
+	printf "fw: multi home firewall not written yet.  Sorry.\n" > /dev/stderr;
 	exit 0;
 
 fi
