@@ -34,7 +34,7 @@ set -ux
 
 
 # Set default variables here
-IPT=`which iptables`
+IPT=/sbin/iptables
 WAN_IFACE=
 LOOPBACK_IFACE="lo"
 IP_ADDRESS=
@@ -66,7 +66,7 @@ ACTION=
 
 
 # If iptables is not here, we shouldn't move forward
-if test -z "$IPT"
+if test -z "$IPT" || test ! -x $IPT
 then 
 	printf "fw: iptables is not present.  " > /dev/stderr
 	printf "Please install 'iptables' before moving forward.\n" > /dev/stderr
@@ -484,11 +484,11 @@ do
 		;;
 
 		--single-home)
-			ACTION=$DO_SH
+			ACTION=$DO_SINGLE_HOME
 		;;
 
 		--multi-home)
-			ACTION=$DO_MH
+			ACTION=$DO_MULTI_HOME
 		;;
 
 		-h|--help)
@@ -504,6 +504,24 @@ if [ -z $ACTION ]
 then 
 	printf "fw: no action specified, nothing to do.\n" > /dev/stderr;
 	exit 1;
+fi
+
+
+# Dump all the settings	
+if [ $ACTION == $DO_DUMP ]
+then
+	dump_settings
+	exit 0;
+fi
+
+
+# TODO: Check for root or elevated priveleges somehow, then die if not
+
+# Go back to a wide-open state
+if [ $ACTION == $DO_STOP ]
+then
+	set_defaults
+	exit 0
 fi
 
 
@@ -523,28 +541,14 @@ then
 fi
 
 
-# Dump all the settings	
-if [ $ACTION == $DO_DUMP ]
-then
-	dump_settings
-	exit 0;
-fi
-
-
-# TODO: Check for root or elevated priveleges somehow, then die if not
 # Go back to a default drop-everything state
 if [ $ACTION == $DO_DFLT ]
 then
 	set_defaults	
 	set_drop
 
-# Go back to a wide-open state
-elif [ $ACTION == $DO_STOP ]
-then
-	set_defaults	
-
 # Run rules for a single home firewall
-elif [ $ACTION == $DO_SH ]
+elif [ $ACTION == $DO_SINGLE_HOME ]
 then
 	set_defaults	
 	set_drop
@@ -560,7 +564,7 @@ then
 	exit 0;
 
 # Run rules for a multi home firewall
-elif [ $ACTION == $DO_MH ]
+elif [ $ACTION == $DO_MULTI_HOME ]
 then
 	printf "fw: multi home firewall not written yet.  Sorry.\n" > /dev/stderr;
 	exit 0;
