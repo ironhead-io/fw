@@ -203,7 +203,7 @@ function set_logdrop_spoof() {
 	$IPT -A INPUT -i $WAN_IFACE -s $IP_ADDRESS -j DROP
 
 	# Drop packets coming from any class A, B or C addresses
-	$IPT -A INPUT -i $WAN_IFACE -s $CLASS_A -j DROP 
+	# $IPT -A INPUT -i $WAN_IFACE -s $CLASS_A -j DROP 
 	$IPT -A INPUT -i $WAN_IFACE -s $CLASS_B -j DROP 
 	$IPT -A INPUT -i $WAN_IFACE -s $CLASS_C -j DROP 
 
