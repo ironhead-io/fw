@@ -53,6 +53,7 @@ PRIV_PORTS="0:1023"
 UNPRIV_PORTS="1024:65535"
 KERN_PATH=/proc/sys/net/ipv4
 USE_CONN_TRACKING=1
+TCP_PORTS=
 SSH_PORT=
 SSH_ALLOWED_IP=
 LOG_PATH=
@@ -468,7 +469,9 @@ Actions:
 
 Common Ports:
     --http                Enable default HTTP port.
-    --https               Enable default HTTPS port.
+    --http                Enable default HTTP port.
+-t, --tcp <arg1...argN>   Enable one or many generic TCP ports to listen for 
+                          connections.
 -h, --help                Show help.
 EOF
 	exit ${1:-0}
@@ -617,13 +620,33 @@ do
 			ACTION=$DO_MULTI_HOME
 		;;
 
-		# Options for common port associations go here
-		--http)
-			ENABLE_HTTP=1	
-		;;
-
-		--https)
-			ENABLE_HTTPS=1	
+		-t|--tcp)
+			shift
+			if [ -z "$1" ] 
+			then
+				printf "fw: No argument specified for --tcp flag\n" > /dev/stderr
+				exit 1
+			else	
+				TCP_PORT_COUNT=0
+				while [ $# -gt 0 ]
+				do
+					case "$1" in
+						-*)		
+							break
+						;;
+						*)
+							TCP_PORTS[ $TCP_PORT_COUNT ]=$1
+							if [ ! -z $2 ] && [ ${2:0:1} != '-' ]
+							then 
+								shift
+								TCP_PORT_COUNT=$(( $TCP_PORT_COUNT + 1 ))
+							else 
+								break
+							fi	
+						;;
+					esac
+				done	
+			fi
 		;;
 
 		-h|--help)
@@ -701,11 +724,20 @@ then
 	set_logdrop_spoof
 	set_disallow_common_services
 	set_allow_dns
-	test ! -z $ENABLE_SSH && set_allow_incoming_ssh $SSH_PORT $SSH_ALLOWED_IP
-	test ! -z $ENABLE_HTTP && set_allow_outgoing_generic_tcp 80
-	test ! -z $ENABLE_HTTP && set_allow_incoming_generic_tcp 80
-	test ! -z $ENABLE_HTTPS && set_allow_outgoing_generic_tcp 443
-	test ! -z $ENABLE_HTTPS && set_allow_incoming_generic_tcp 443
+
+	if [ ! -z $ENABLE_SSH ] 
+	then
+		set_allow_incoming_ssh $SSH_PORT $SSH_ALLOWED_IP
+	fi
+
+	if [ ! -z "$TCP_PORTS" ] 
+	then
+		for TCP_PORT in ${TCP_PORTS[@]}
+		do
+			set_allow_outgoing_generic_tcp $TCP_PORT 
+			set_allow_incoming_generic_tcp $TCP_PORT
+		done
+	fi
 	#set_log_all_incoming_dropped
 	#set_log_all_outgoing_dropped
 	exit 0;
