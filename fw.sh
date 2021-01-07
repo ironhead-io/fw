@@ -30,7 +30,7 @@
 
 # Stop at unset variable usage
 #set -u
-set -ux
+#set -ux
 
 
 # Set default variables here
@@ -53,15 +53,21 @@ PRIV_PORTS="0:1023"
 UNPRIV_PORTS="1024:65535"
 KERN_PATH=/proc/sys/net/ipv4
 USE_CONN_TRACKING=1
+SSH_PORT=
+SSH_ALLOWED_IP=
 LOG_PATH=
 
+# TODO: All of these extra ports are going to be hard to maintain...
+# SSH_PORT
+# SSH_PORT
 
 # Mark actions seperately (these would be const enums or something in C)
-DO_DFLT=1
+DO_DEFAULT=1
 DO_DUMP=1
 DO_STOP=2
 DO_SINGLE_HOME=3
 DO_MULTI_HOME=4
+#DO_MODIFY=5 # TODO: Use this to add rules to an already running firewall
 ACTION=
 
 
@@ -81,7 +87,7 @@ function chop_at_colon() {
 	WORD=0
 
 	# If the character is there, return one item, if not, return both
-	for n in `seq 0 $(( ${#ARR} - 1 ))`; do test ${ARR:$n:1} == ':' && WORD=1; done
+	for n in `seq 0 $(( ${#ARR} - 1 ))`; do test ${ARR:$n:1} == ':' && WORD=1 && break; done
 
 	# Return an array
 	test $WORD -eq 1 && echo ${ARR%%:*} ${ARR#*:} || echo $ARR	
@@ -152,7 +158,7 @@ function set_drop() {
 
 	# Allow the loopback interface to accept everything
 	$IPT -A INPUT -i lo -j ACCEPT
-	$IPT -A OUTPUT -i lo -j ACCEPT
+	$IPT -A OUTPUT -o lo -j ACCEPT
 }
 
 
@@ -174,10 +180,10 @@ function set_state_tracking() {
 	
 	# These could break long-running HTTP or HTTP/2 connections b/c
 	# they by default drop any bi-direction connections
-	#$IPT -A INPUT -m state --state INVALID -j LOG --log-prefix "INVALID input: "
-	#$IPT -A INPUT -m state --state INVALID -j DROP
-	#$IPT -A OUTPUT -m state --state INVALID -j LOG --log-prefix "INVALID output: " 
-	#$IPT -A OUTPUT -m state --state INVALID -j DROP
+	$IPT -A INPUT -m state --state INVALID -j LOG --log-prefix "INVALID input: "
+	$IPT -A INPUT -m state --state INVALID -j DROP
+	$IPT -A OUTPUT -m state --state INVALID -j LOG --log-prefix "INVALID output: " 
+	$IPT -A OUTPUT -m state --state INVALID -j DROP
 }
 
 
@@ -187,7 +193,7 @@ function set_logdrop_spoof() {
 	$IPT -A INPUT -i $WAN_IFACE -s $IP_ADDRESS -j DROP
 
 	# Drop packets coming from any class A, B or C addresses
-	$IPT -A INPUT -i $WAN_IFACE -s $CLASS_A -j DROP 
+	#$IPT -A INPUT -i $WAN_IFACE -s $CLASS_A -j DROP 
 	$IPT -A INPUT -i $WAN_IFACE -s $CLASS_B -j DROP 
 	$IPT -A INPUT -i $WAN_IFACE -s $CLASS_C -j DROP 
 
@@ -283,67 +289,115 @@ function set_allow_mail() {
 
 
 # Allow SSH
-function set_allow_ssh() {
+function set_allow_incoming_ssh() {
 	SSH_PORTS="1024:65535"
-	SSH_ACCESS_PORT=2882
-	if [ $USE_CONN_TRACKING == 1 ]
-	then	
-		$IPT -A INPUT -i $WAN_IFACE -p tcp --sport $SSH_PORTS \
-			-d $IP_ADDRESS --dport $SSH_ACCESS_PORT -m state --state NEW -j ACCEPT
+	_SSH_PORT=$1
+	_SSH_ALLOWED_IP="$2"
+	if [ -z "$_SSH_PORT" ] 
+	then
+		printf "fw: No port specified for new incoming TCP rule.\n" > /dev/stderr
+		exit 1;
 	fi
 
-	$IPT -A INPUT -i $WAN_IFACE -p tcp --sport $SSH_PORTS \
-		-d $IP_ADDRESS --dport $SSH_ACCESS_PORT -j ACCEPT
-	
-	$IPT -A OUTPUT -o $WAN_IFACE -p tcp ! --syn -s $IP_ADDRESS \
-		--sport $SSH_ACCESS_PORT --dport $SSH_PORTS -j ACCEPT
+	if [ -z $_SSH_ALLOWED_IP ]
+	then
+		# Allow access from the outside world
+		if [ $USE_CONN_TRACKING == 1 ]
+		then	
+			$IPT -A INPUT -i $WAN_IFACE -p tcp --sport $SSH_PORTS \
+				-d $IP_ADDRESS --dport $_SSH_PORT -m state --state NEW -j ACCEPT
+		fi
+
+		$IPT -A INPUT -i $WAN_IFACE -p tcp --sport $SSH_PORTS \
+			-d $IP_ADDRESS --dport $_SSH_PORT -j ACCEPT
+
+		$IPT -A OUTPUT -o $WAN_IFACE -p tcp ! --syn -s $IP_ADDRESS \
+			--sport $_SSH_PORT --dport $SSH_PORTS -j ACCEPT
+	else
+		# Allow access from a specific user (or set of users?) 
+		if [ $USE_CONN_TRACKING == 1 ]
+		then	
+			$IPT -A INPUT -i $WAN_IFACE -p tcp --sport $SSH_PORTS -s $_SSH_ALLOWED_IP \
+				-d $IP_ADDRESS --dport $_SSH_PORT -m state --state NEW -j ACCEPT
+		fi
+
+		$IPT -A INPUT -i $WAN_IFACE -p tcp --sport $SSH_PORTS -s $_SSH_ALLOWED_IP \
+			-d $IP_ADDRESS --dport $_SSH_PORT -j ACCEPT
+
+		$IPT -A OUTPUT -o $WAN_IFACE -p tcp ! --syn -s $IP_ADDRESS \
+			--sport $_SSH_PORT --dport $SSH_PORTS -d $_SSH_ALLOWED_IP -j ACCEPT
+	fi
+}
+
+
+# Allow outgoing SSH (more important for multi-homed hosts)
+function set_allow_outgoing_ssh() {
+	# For a multi-homed host, I'll need this
+#	if [ $USE_CONN_TRACKING == 1 ]
+#	then	
+#		$IPT -A OUTPUT -o $WAN_IFACE -p tcp -s $IP_ADDRESS --sport $SSH_PORTS \
+#			--dport $SSH_ACCESS_PORT -m state --state NEW -j ACCEPT
+#	fi
+#
+#	$IPT -A OUTPUT -o $WAN_IFACE -p tcp -s $IP_ADDRESS --sport $SSH_PORTS \
+#		--dport $SSH_ACCESS_PORT -j ACCEPT
+#
+#	$IPT -A INPUT -i $WAN_IFACE -p tcp ! --syn \
+#		--sport $SSH_ACCESS_PORT -d $IP_ADDRESS --dport $SSH_PORTS -j ACCEPT
+	printf '' >/dev/null
 }
 
 
 # Allow outgoing generic TCP connection
 function set_allow_outgoing_generic_tcp() {
-	PORT=$1
-	if [ -z "$1" ] 
-	then
-		printf "fw: No port specified for outgoing TCP rule.\n" > /dev/stderr
-		return 0;
-	fi
+	OPORTS=$1
+	for PORT in ${OPORTS[@]}
+	do
+		if [ -z "$1" ] 
+		then
+			printf "fw: No port specified for outgoing TCP rule.\n" > /dev/stderr
+			exit 1;
+		fi
 
-	# Allow outgoing TCP connection
-	if [ $USE_CONN_TRACKING == 1 ]
-	then	
+		# Allow outgoing TCP connection
+		if [ $USE_CONN_TRACKING == 1 ]
+		then	
+			$IPT -A OUTPUT -o $WAN_IFACE -p tcp -s $IP_ADDRESS --sport $UNPRIV_PORTS \
+				--dport $PORT -m state --state NEW -j ACCEPT
+		fi
+
 		$IPT -A OUTPUT -o $WAN_IFACE -p tcp -s $IP_ADDRESS --sport $UNPRIV_PORTS \
-			--dport $PORT -m state --state NEW -j ACCEPT
-	fi
-
-	$IPT -A OUTPUT -o $WAN_IFACE -p tcp -s $IP_ADDRESS --sport $UNPRIV_PORTS \
-		--dport $PORT -j ACCEPT
-	
-	$IPT -A INPUT -i $WAN_IFACE -p tcp ! --syn --sport $PORT \
-		-d $IP_ADDRESS --dport $UNPRIV_PORTS -j ACCEPT
+			--dport $PORT -j ACCEPT
+		
+		$IPT -A INPUT -i $WAN_IFACE -p tcp ! --syn --sport $PORT \
+			-d $IP_ADDRESS --dport $UNPRIV_PORTS -j ACCEPT
+	done
 }
 
 
 # Allow incoming generic TCP connection
 function set_allow_incoming_generic_tcp() {
-	PORT=$1
-	if [ -z "$1" ] 
+	IPORTS=$@
+	if [ -z "$IPORTS" ] 
 	then
-		printf "fw: No port specified for incoming TCP rule.\n" > /dev/stderr
-		return 0;
+		printf "fw: No port specified for new incoming TCP rule.\n" > /dev/stderr
+		exit 1;
 	fi
 
-	if [ $USE_CONN_TRACKING == 1 ]
-	then	
+	for PORT in ${IPORTS[@]}
+	do
+		if [ $USE_CONN_TRACKING == 1 ]
+		then	
+			$IPT -A INPUT -i $WAN_IFACE -p tcp --sport $UNPRIV_PORTS \
+				-d $IP_ADDRESS --dport $PORT -m state --state NEW -j ACCEPT
+		fi
+
 		$IPT -A INPUT -i $WAN_IFACE -p tcp --sport $UNPRIV_PORTS \
-			-d $IP_ADDRESS --dport $PORT -m state --state NEW -j ACCEPT
-	fi
-
-	$IPT -A INPUT -i $WAN_IFACE -p tcp --sport $UNPRIV_PORTS \
-		-d $IP_ADDRESS --dport $PORT -j ACCEPT
-	
-	$IPT -A OUTPUT -o $WAN_IFACE -p tcp ! --syn -s $IP_ADDRESS \
-		--dport $UNPRIV_PORTS -j ACCEPT
+			-d $IP_ADDRESS --dport $PORT -j ACCEPT
+		
+		$IPT -A OUTPUT -o $WAN_IFACE -p tcp ! --syn -s $IP_ADDRESS \
+			--dport $UNPRIV_PORTS -j ACCEPT
+	done
 }
 
 
@@ -383,20 +437,24 @@ function set_log_all_outgoing_dropped() {
 function show_help() {
 	cat <<EOF
 Usage: ./fw [options]
--w, --wan <arg:[ip]>        Specify the WAN interface (& an optional IP address)
--d, --dmz <arg:[ip]>        Specify the DMZ interface (& an optional IP address)
--l, --lan <arg:[ip]>        Specify the LAN interface (& an optional IP address)
--i, --ip-address <arg>      Specify an IP for the WAN interface 
-                            (if DMZ or LAN are not specified)
--b, --subnet-base <arg>     Specify a subnet base
--c, --subnet-bcast <arg>    Specify a subnet broadcast
--p, --log-path <arg>        Specify an alternate log path for firewall messages 
--x, --dump                  Dump the currently loaded variables 
-    --stop                  Totally stop the firewall.
-    --single-home           Start a single home firewall.
-    --multi-home            Start a multi home firewall.
--h, --help                  Show help.
+-w, --wan <arg:[ip]>      Specify the WAN interface (& an optional IP address)
+-d, --dmz <arg:[ip]>      Specify the DMZ interface (& an optional IP address)
+-l, --lan <arg:[ip]>      Specify the LAN interface (& an optional IP address)
+-s, --ssh <arg:[ip]>      Specify a port (& an optional IP address to listen 
+                          out for) for SSH connections
+-i, --ip-address <arg>    Specify an IP for the WAN interface 
+                          (if DMZ or LAN are not specified)
+-b, --subnet-base <arg>   Specify a subnet base
+-c, --subnet-bcast <arg>  Specify a subnet broadcast
+-p, --log-path <arg>      Specify an alternate log path for firewall messages 
+-x, --dump                Dump the currently loaded variables 
+    --deny                Flush any rules and go back to deny-by-default policy.
+    --stop                Totally stop the firewall.
+    --single-home         Start a single home firewall.
+    --multi-home          Start a multi home firewall.
+-h, --help                Show help.
 EOF
+	exit ${1:-0}
 }
 
 
@@ -435,18 +493,63 @@ do
 
 		# Set the DMZ interface
 		-d|--dmz)
-			#shift
-			#DMZ_IFACE="$1"
-			printf "fw: DMZ interface logic not done yet...\n" > /dev/stderr
-			exit 1
+			shift
+			if [ -z "$1" ] 
+			then
+				printf "fw: No argument specified for --dmz flag\n" > /dev/stderr
+				exit 1
+			else 	
+				DTMP=( `chop_at_colon "$1"` )
+				if [ ${#DTMP} -eq 1 ]
+				then
+					DMZ_IFACE="$1"
+				elif [ ${#DTMP} -gt 1 ] 	
+				then
+					DMZ_IFACE="${DTMP[0]}"
+					DMZ_ADDRESS="${DTMP[1]}"
+				fi
+			fi
 		;;
 
 		# Set the LAN interface
 		-l|--lan)
-			#shift
-			#LAN_IFACE="$1"
-			printf "fw: LAN interface logic not done yet...\n" > /dev/stderr
-			exit 1
+			shift
+			if [ -z "$1" ] 
+			then
+				printf "fw: No argument specified for --dmz flag\n" > /dev/stderr
+				exit 1
+			else 	
+				LTMP=( `chop_at_colon "$1"` )
+				if [ ${#LTMP} -eq 1 ]
+				then
+					LAN_IFACE="$1"
+				elif [ ${#LTMP} -gt 1 ] 	
+				then
+					LAN_IFACE="${LTMP[0]}"
+					LAN_ADDRESS="${LTMP[1]}"
+				fi
+			fi
+		;;
+
+		# Set the LAN interface
+		-l|--lan)
+			shift
+			if [ -z "$1" ] 
+			then
+				printf "fw: No argument specified for --ssh flag\n" > /dev/stderr
+				exit 1
+			else 	
+				STMP=( `chop_at_colon "$1"` )
+				if [ ${#STMP} -eq 1 ]
+				then
+					SSH_PORT="$1"
+					SSH_ALLOWED_IP=
+				elif [ ${#STMP} -gt 1 ] 	
+				then
+					SSH_PORT="${STMP[0]}"
+					SSH_ALLOWED_IP="${STMP[1]}"
+				fi
+			fi
 		;;
 
 		# My IP address
@@ -478,6 +581,11 @@ do
 			ACTION=$DO_DUMP
 		;;
 
+		# Adopt a deny by default policy
+		--deny)
+			ACTION=$DO_DEFAULT
+		;;
+
 		# TODO: OK. From experience, this sucks... so let's try something different.
 		--stop)
 			ACTION=$DO_STOP
@@ -493,6 +601,7 @@ do
 
 		-h|--help)
 			show_help
+			exit 0
 		;;
 	esac
 	shift
@@ -516,6 +625,15 @@ fi
 
 
 # TODO: Check for root or elevated priveleges somehow, then die if not
+
+# Go back to a deny-by-default state 
+if [ $ACTION == $DO_DEFAULT ]
+then
+	set_defaults
+	set_drop
+	exit 0
+fi
+
 
 # Go back to a wide-open state
 if [ $ACTION == $DO_STOP ]
@@ -542,7 +660,7 @@ fi
 
 
 # Go back to a default drop-everything state
-if [ $ACTION == $DO_DFLT ]
+if [ $ACTION == $DO_DEFAULT ]
 then
 	set_defaults	
 	set_drop
@@ -556,9 +674,9 @@ then
 	set_logdrop_spoof
 	set_disallow_common_services
 	set_allow_dns
-	set_allow_ssh
-	#set_allow_outgoing_generic_tcp 80 443
-	#set_allow_incoming_generic_tcp 80 443
+	set_allow_incoming_ssh $SSH_PORT $SSH_ALLOWED_IP
+	set_allow_outgoing_generic_tcp 80 443
+	set_allow_incoming_generic_tcp 80 443
 	#set_log_all_incoming_dropped
 	#set_log_all_outgoing_dropped
 	exit 0;
