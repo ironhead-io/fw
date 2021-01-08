@@ -25,26 +25,26 @@ The most pertinent targets are:
 Options for using `fw` are as follows.
 
 <pre>
--w, --wan <arg:[ip]>      Specify the WAN interface (& an optional IP address)
--d, --dmz <arg:[ip]>      Specify the DMZ interface (& an optional IP address)
--l, --lan <arg:[ip]>      Specify the LAN interface (& an optional IP address)
--a, --ssh <arg:[ip]>      Specify a port (& an optional IP address to listen 
+-w, --wan &lt;arg:[ip]&gt;     Specify the WAN interface (& an optional IP address)
+-d, --dmz &lt;arg:[ip]&gt;     Specify the DMZ interface (& an optional IP address)
+-l, --lan &lt;arg:[ip]&gt;     Specify the LAN interface (& an optional IP address)
+-a, --ssh &lt;arg:[ip]&gt;     Specify a port (& an optional IP address to listen 
                           out for) for SSH connections
--i, --ip-address <arg>    Specify an IP for the WAN interface 
+-i, --ip-address &lt;arg&gt;   Specify an IP for the WAN interface 
                           (if DMZ or LAN are not specified)
--b, --subnet-base <arg>   Specify a subnet base
--c, --subnet-bcast <arg>  Specify a subnet broadcast
--p, --log-path <arg>      Specify an alternate log path for firewall messages 
+-b, --subnet-base &lt;arg&gt;  Specify a subnet base
+-c, --subnet-bcast &lt;arg&gt; Specify a subnet broadcast
+-p, --log-path &lt;arg&gt;     Specify an alternate log path for firewall messages 
 
 Actions:
--x, --dump                Dump the currently loaded variables 
-    --deny                Flush any rules and go back to deny-by-default policy.
-    --stop                Totally stop the firewall.
-    --single-home         Start a single home firewall.
-    --multi-home          Start a multi home firewall.
--t, --tcp <arg1...argN>   Enable one or many generic TCP ports to listen for 
-                          connections.
--h, --help                Show help.
+-x, --dump                     Dump the currently loaded variables 
+    --deny                     Flush any rules and go back to deny-by-default policy.
+    --stop                     Totally stop the firewall.
+    --single-home              Start a single home firewall.
+    --multi-home               Start a multi home firewall.
+-t, --tcp &lt;arg1...argN&gt;  Enable one or many generic TCP ports to listen for 
+                               connections.
+-h, --help                     Show help.
 </pre>
 
 
