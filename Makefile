@@ -20,13 +20,13 @@ install:
 	chmod 544 $(PREFIX)/bin/$(SCRIPT) 
 
 
-# enable-systemd : Enable firewall to run at boot on systemd capable systems
-enable-systemd:
+# systemd : Enable firewall to run at boot on systemd capable systems
+systemd:
 	printf '' >/dev/null
 
 
-# enable-sysv : Enable firewall to run at boot on SysV capable systems
-enable-sysv:
+# sysv : Enable firewall to run at boot on SysV capable systems
+sysv:
 	printf '' >/dev/null
 
 
