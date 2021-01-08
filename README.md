@@ -35,6 +35,8 @@ Options for using `fw` are as follows.
 -b, --subnet-base &lt;arg&gt;  Specify a subnet base
 -c, --subnet-bcast &lt;arg&gt; Specify a subnet broadcast
 -p, --log-path &lt;arg&gt;     Specify an alternate log path for firewall messages 
+-t, --tcp &lt;arg1...argN&gt;  Enable one or many generic TCP ports to listen for 
+                         connections.
 
 Actions:
 -x, --dump               Dump the currently loaded variables 
@@ -42,9 +44,10 @@ Actions:
     --stop               Totally stop the firewall.
     --single-home        Start a single home firewall.
     --multi-home         Start a multi home firewall.
--t, --tcp &lt;arg1...argN&gt;  Enable one or many generic TCP ports to listen for 
-                         connections.
--h, --help               Show help.
+    --allow-class-a      Allow all input traffic claiming to be from Class A addresses
+    --allow-class-b      Allow all input traffic claiming to be from Class B addresses
+    --allow-class-c      Allow all input traffic claiming to be from Class C addresses
+h, --help               Show help.
 </pre>
 
 
@@ -56,19 +59,25 @@ A typical invocation of `fw` will look something like:
 $ fw -w eno1:99.99.88.111 --ssh 22 --single-home
 </pre>
 
-Running the above code will run firewall rules using the interface 'eno1' as
-the WAN interface.  It will also poke a hole for SSH access at port 22.
+Running the above code will run firewall rules using interface 'eno1' as
+the WAN interface and 99.99.88.111 as the WAN's IP address.  It will also 
+poke a hole for SSH access at port 22.  
 
+The `--single-home` option assumes that the box will be a single homed firewall 
+that hosts all services.  With this option, no masquerading or forwarding is 
+performed, but DNS (at port 53) is active.  Access will be denied to any other port 
+not explicitly enabled either with `--ssh <port number>` or `--tcp <port numbers>` 
+arguments.   
 
 If a web server (or other simple TCP service) is needed, the same invocation
-can be used with an additional `--tcp` argument. 
+can be used the `--tcp` argument. 
 
 <pre>
 $ fw -w eno1:99.99.88.111 --ssh 22 --single-home --tcp 80
 </pre>
 
-The `--tcp` option will support opening multiple <i>bi-directional</i> ports
-at once.  
+The `--tcp` option will also support opening multiple <i>bi-directional</i> 
+ports at once.  
 
 <pre>
 $ fw -w eno1:99.99.88.111 --ssh 22 --single-home --tcp 80 443 1222
