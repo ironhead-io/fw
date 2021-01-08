@@ -48,7 +48,7 @@ Actions:
 </pre>
 
 
-### Quickstart
+### Quickstart / Recipes 
 
 A typical invocation of `fw` will look something like:
 
@@ -60,3 +60,19 @@ Running the above code will run firewall rules using the interface 'eno1' as
 the WAN interface.  It will also poke a hole for SSH access at port 22.
 
 
+If a web server (or other simple TCP service) is needed, the same invocation
+can be used with an additional `--tcp` argument. 
+
+<pre>
+$ fw -w eno1:99.99.88.111 --ssh 22 --single-home --tcp 80
+</pre>
+
+The `--tcp` option will support opening multiple <i>bi-directional</i> ports
+at once.  
+
+<pre>
+$ fw -w eno1:99.99.88.111 --ssh 22 --single-home --tcp 80 443 1222
+</pre>
+
+Note that connections both coming from inside and outside of the firewall will 
+be able to access services on the ports specified.
