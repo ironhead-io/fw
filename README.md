@@ -37,14 +37,14 @@ Options for using `fw` are as follows.
 -p, --log-path &lt;arg&gt;     Specify an alternate log path for firewall messages 
 
 Actions:
--x, --dump                     Dump the currently loaded variables 
-    --deny                     Flush any rules and go back to deny-by-default policy.
-    --stop                     Totally stop the firewall.
-    --single-home              Start a single home firewall.
-    --multi-home               Start a multi home firewall.
+-x, --dump               Dump the currently loaded variables 
+    --deny               Flush any rules and go back to deny-by-default policy.
+    --stop               Totally stop the firewall.
+    --single-home        Start a single home firewall.
+    --multi-home         Start a multi home firewall.
 -t, --tcp &lt;arg1...argN&gt;  Enable one or many generic TCP ports to listen for 
-                               connections.
--h, --help                     Show help.
+                         connections.
+-h, --help               Show help.
 </pre>
 
 
