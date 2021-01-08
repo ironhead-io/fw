@@ -30,7 +30,7 @@
 
 # Stop at unset variable usage
 #set -u
-set -x
+#set -x
 
 
 # Set default variables here
