@@ -56,6 +56,9 @@ USE_CONN_TRACKING=1
 TCP_PORTS=
 SSH_PORT=
 SSH_ALLOWED_IP=
+ALLOW_CLASS_A=
+ALLOW_CLASS_B=
+ALLOW_CLASS_C=
 LOG_PATH=
 
 # TODO: All of these extra ports MAY get hard to maintain...
@@ -203,9 +206,9 @@ function set_logdrop_spoof() {
 	$IPT -A INPUT -i $WAN_IFACE -s $IP_ADDRESS -j DROP
 
 	# Drop packets coming from any class A, B or C addresses
-	# $IPT -A INPUT -i $WAN_IFACE -s $CLASS_A -j DROP 
-	$IPT -A INPUT -i $WAN_IFACE -s $CLASS_B -j DROP 
-	$IPT -A INPUT -i $WAN_IFACE -s $CLASS_C -j DROP 
+	test -z "$ALLOW_CLASS_A" && $IPT -A INPUT -i $WAN_IFACE -s $CLASS_A -j DROP 
+	test -z "$ALLOW_CLASS_B" && $IPT -A INPUT -i $WAN_IFACE -s $CLASS_B -j DROP 
+	test -z "$ALLOW_CLASS_C" && $IPT -A INPUT -i $WAN_IFACE -s $CLASS_C -j DROP 
 
 	# Drop packets coming from loopback interface
 	$IPT -A INPUT -i $WAN_IFACE -s $LOOPBACK -j DROP 
@@ -459,6 +462,8 @@ Arguments:
 -b, --subnet-base <arg>   Specify a subnet base
 -c, --subnet-bcast <arg>  Specify a subnet broadcast
 -p, --log-path <arg>      Specify an alternate log path for firewall messages 
+-t, --tcp <arg1...argN>   Enable one or many generic TCP ports to listen for 
+                          connections.
 
 Actions:
 -x, --dump                Dump the currently loaded variables 
@@ -466,8 +471,9 @@ Actions:
     --stop                Totally stop the firewall.
     --single-home         Start a single home firewall.
     --multi-home          Start a multi home firewall.
--t, --tcp <arg1...argN>   Enable one or many generic TCP ports to listen for 
-                          connections.
+    --allow-class-a       Allow all input traffic claiming to be from Class A addresses
+    --allow-class-b       Allow all input traffic claiming to be from Class B addresses
+    --allow-class-c       Allow all input traffic claiming to be from Class C addresses
 -h, --help                Show help.
 EOF
 	exit ${1:-0}
@@ -643,6 +649,18 @@ do
 					esac
 				done	
 			fi
+		;;
+
+		--allow-class-a)
+			ALLOW_CLASS_A=1
+		;;
+
+		--allow-class-b)
+			ALLOW_CLASS_B=1
+		;;
+
+		--allow-class-c)
+			ALLOW_CLASS_C=1
 		;;
 
 		-h|--help)
