@@ -466,10 +466,6 @@ Actions:
     --stop                Totally stop the firewall.
     --single-home         Start a single home firewall.
     --multi-home          Start a multi home firewall.
-
-Common Ports:
-    --http                Enable default HTTP port.
-    --http                Enable default HTTP port.
 -t, --tcp <arg1...argN>   Enable one or many generic TCP ports to listen for 
                           connections.
 -h, --help                Show help.
