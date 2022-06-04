@@ -6,6 +6,7 @@ CHOICE=
 COUNTER=1
 
 # Intro
+clear
 echo "Hi!  I'm here to help you set up fw (the 2 minute firewall) for your server..."
 sleep 1
 
@@ -77,9 +78,16 @@ read ans
 
 if [[ $ans =~ [Yy] ]] || [[ $ans =~ "[Yy][Ee][Ss]" ]]
 then
-	echo "Generating config file at systemd/.config"
+	echo
+	echo "Awesome!  I'm going to go ahead and create a config file at systemd/.config"
 	sed "{ s|__PREFIX__|$PREFIX|; s|__INTERFACE__|$INTERFACE|; s|__SSH_PORT__|$SSH_PORT|; s|__TCP_PORTS__|$TCP_PORTS| ;s|__IP_ADDRESS__|$IP_ADDRESS| ; }" systemd/etc.systemd.system.fw.service > systemd/.config
-	echo "fw -w ${INTERFACE}:${IP_ADDRESS} --ssh $SSH_PORT --tcp $TCP_PORTS" > .cmd
+
+	echo
+	echo "You can test your configuration manually with:"
+	echo "fw -w ${INTERFACE}:${IP_ADDRESS} --single-home --ssh $SSH_PORT --tcp $TCP_PORTS" > .cmd
+	echo
+	cat .cmd
+	echo
 else
 	echo "Darn.  Sorry this didn't work, perhaps try using environment variables or the Makefile instead?"
 	exit 1

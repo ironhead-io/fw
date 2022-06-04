@@ -29,9 +29,11 @@ install:
 	chown $(USER):$(GROUP) $(PREFIX)/bin/$(SCRIPT)
 	chmod 544 $(PREFIX)/bin/$(SCRIPT) 
 	-test -d /etc/systemd/system && test -f systemd/.config && cp systemd/.config /etc/systemd/system/fw.service
-	echo "You've successfully installed fw, the 2-minute firewall."
-	echo "Test your configuration with 'systemctl start fw'"
-	echo "If it's working as expected, you can configure it to run at boot with 'systemctl enable fw'"
+	@echo
+	@echo "You've successfully installed fw, the 2-minute firewall."
+	@echo "Test your configuration with 'systemctl start fw'"
+	@echo "If it's working as expected, you can configure it to run at boot with 'systemctl enable fw'"
+	@echo
 	
 
 # check : Checks for iptables
