@@ -6,6 +6,7 @@ After=network.target
 [Service]
 Type=oneshot
 ExecStart=__PREFIX__/bin/fw -w __INTERFACE__:__IP_ADDRESS__ --single-home --tcp __TCP_PORTS__ --ssh __SSH_PORT__
+ExecStop=__PREFIX__/bin/fw --stop
 
 [Install]
 WantedBy=multi-user.target
