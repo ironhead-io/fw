@@ -1,6 +1,10 @@
 # fw  
 
-The 2 minute firewall.
+A 2 minute firewall.
+
+## Quickstart
+
+Run `make menuconfig` to set up your firewall configuration, then `make install` to install it.  You can test it first with `make test`, which will enable your ruleset for 30 seconds and disable it (should something be misconfigured and you can't access your machine).
 
 
 ## Installation
@@ -83,3 +87,8 @@ $ fw -w eno1:99.99.88.111 --ssh 22 --single-home --tcp 80 443 1222
 
 Note that connections both coming from inside and outside of the firewall will 
 be able to access services on the ports specified.
+
+
+## Future Steps
+
+This is a pretty simple script and is best used by someone who wants a set it and forget it kind of server.  For the majority of my web projects this is the most I need to get things done.  In the future, I'd like to add support for sysV (init script-based) systems.

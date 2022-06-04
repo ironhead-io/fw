@@ -11,19 +11,14 @@ list:
 	@sed -n '/^# / { s/# //; 1d; p; }' Makefile | awk -F ':' '{ printf "  %-20s - %s\n", $$1, $$2 }'
 
 
+# menuconfig : Build a permanent firewall configuration using an interactive script
+menuconfig:
+	@./interactive.sh -f systemd/.config	
+
+
 # envconfig : Build a permanent firewall configuration using environment variables
 envconfig:
 	@sed '{ s|__PREFIX__|$(PREFIX)|; s|__INTERFACE__|$(INTERFACE)|; s|__SSH_PORT__|$(SSH_PORT)|; s|__TCP_PORTS__|$(TCP_PORTS)| ;s|__IP_ADDRESS__|$(IP_ADDRESS)| ; }' systemd/etc.systemd.system.fw.service > systemd/.config
-
-
-# makeconfig : Build a permanent firewall configuration using Makefile overrides
-makeconfig:
-	@sed '{ s|__PREFIX__|$(PREFIX)|; s|__SSH_PORT__|$(SSH_PORT)| ; s|__TCP_PORTS__|$(TCP_PORTS)| ;s|__IP_ADDRESS__|$(IP_ADDRESS)| ; }' systemd/etc.systemd.system.fw.service > systemd/.config
-
-
-# menuconfig : Build a permanent firewall configuration using an interactive script
-menuconfig:
-	./interactive.sh -f systemd/.config	
 
 
 # install : Install to $PREFIX
@@ -33,17 +28,11 @@ install:
 	cp $(SCRIPT).sh $(PREFIX)/bin/$(SCRIPT)
 	chown $(USER):$(GROUP) $(PREFIX)/bin/$(SCRIPT)
 	chmod 544 $(PREFIX)/bin/$(SCRIPT) 
-
-
-# systemd : Enable firewall to run at boot on systemd capable systems
-systemd:
-	cp systemd/.config /etc/systemd/system/fw.service	
-
-
-# sysv : Enable firewall to run at boot on SysV capable systems
-sysv:
-	printf '' >/dev/null
-
+	-test -d /etc/systemd/system && test -f systemd/.config && cp systemd/.config /etc/systemd/system/fw.service
+	echo "You've successfully installed fw, the 2-minute firewall."
+	echo "Test your configuration with 'systemctl start fw'"
+	echo "If it's working as expected, you can configure it to run at boot with 'systemctl enable fw'"
+	
 
 # pkg : Something with packages
 pkg:
@@ -57,3 +46,7 @@ check:
 		exit 5; \
 	}
 
+
+# clean: Remove any configuation files generated 
+clean:
+	rm -f .cmd systemd/.config

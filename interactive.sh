@@ -1,14 +1,17 @@
 #!/bin/bash -
 # fw setup tool - super simple... 
-
 PREFIX="/usr/local"
 FILE=systemd/.config
 CHOICE=
 COUNTER=1
 
+# Intro
 echo "Hi!  I'm here to help you set up fw (the 2 minute firewall) for your server..."
 sleep 1
 
+
+
+# Find the possible interfaces
 while [ -z $CHOICE ]
 do
 	echo
@@ -31,17 +34,35 @@ do
 	fi
 done
 
-
 TMP=${CHOICES[ $(( $CHOICE - 1 )) ]}
 INTERFACE=`echo $TMP | awk -F '=' '{ print $1 }'` 
 IP_ADDRESS=`echo $TMP | awk -F '=' '{ print $2 }' | sed 's|/[0-9].*||'` 
 
-echo "Which TCP port(s) do you need open?"
+
+# Find the SSH port if it's there at all
+SSH_APX_PORT=`sed -n '/^Port/p' /etc/ssh/sshd_config 2>/dev/null`
+if [ ! -z "$SSH_APX_PORT" ]
+then
+	SSH_APX_PORT=`echo $SSH_APX_PORT | awk '{ print $2 }'`
+else
+	SSH_APX_PORT=22
+fi
+
+echo "Where is your SSH daemon running?"
+echo "(I detected port $SSH_APX_PORT, but correct me if I'm wrong...)"
+read SSH_PORT
+
+if [ -z $SSH_PORT ]
+then
+	SSH_PORT=$SSH_APX_PORT
+fi
+
+
+# Get TCP ports
+echo "Finally, which TCP port(s) do you need open?"
 echo "(If you need more than one, just list them with a space between like so: 80 226 552, etc)"
 read TCP_PORTS
 
-echo "Finally, where is your SSH daemon running?"
-read SSH_PORT
 
 echo
 echo "Great!  The settings for your firewall are below:"
@@ -58,6 +79,7 @@ if [[ $ans =~ [Yy] ]] || [[ $ans =~ "[Yy][Ee][Ss]" ]]
 then
 	echo "Generating config file at systemd/.config"
 	sed "{ s|__PREFIX__|$PREFIX|; s|__INTERFACE__|$INTERFACE|; s|__SSH_PORT__|$SSH_PORT|; s|__TCP_PORTS__|$TCP_PORTS| ;s|__IP_ADDRESS__|$IP_ADDRESS| ; }" systemd/etc.systemd.system.fw.service > systemd/.config
+	echo "fw -w ${INTERFACE}:${IP_ADDRESS} --ssh $SSH_PORT --tcp $TCP_PORTS" > .cmd
 else
 	echo "Darn.  Sorry this didn't work, perhaps try using environment variables or the Makefile instead?"
 	exit 1
