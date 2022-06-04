@@ -1,0 +1,13 @@
+[Unit]
+Description=Easy firewall
+DefaultDependencies=no
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=__PREFIX__/bin/fw -w __INTERFACE__:__IP_ADDRESS__ --ssh __SSH_PORT__ --single-home --tcp __TCP_PORTS__
+#Restart=on-failure
+#RestartSec=20s
+
+[Install]
+WantedBy=multi-user.target

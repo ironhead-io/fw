@@ -11,6 +11,21 @@ list:
 	@sed -n '/^# / { s/# //; 1d; p; }' Makefile | awk -F ':' '{ printf "  %-20s - %s\n", $$1, $$2 }'
 
 
+# envconfig : Build a permanent firewall configuration using environment variables
+envconfig:
+	@sed '{ s|__PREFIX__|$(PREFIX)|; s|__INTERFACE__|$(INTERFACE)|; s|__SSH_PORT__|$(SSH_PORT)|; s|__TCP_PORTS__|$(TCP_PORTS)| ;s|__IP_ADDRESS__|$(IP_ADDRESS)| ; }' systemd/etc.systemd.system.fw.service > systemd/.config
+
+
+# makeconfig : Build a permanent firewall configuration using Makefile overrides
+makeconfig:
+	@sed '{ s|__PREFIX__|$(PREFIX)|; s|__SSH_PORT__|$(SSH_PORT)| ; s|__TCP_PORTS__|$(TCP_PORTS)| ;s|__IP_ADDRESS__|$(IP_ADDRESS)| ; }' systemd/etc.systemd.system.fw.service > systemd/.config
+
+
+# menuconfig : Build a permanent firewall configuration using an interactive script
+menuconfig:
+	./interactive.sh -f systemd/.config	
+
+
 # install : Install to $PREFIX
 install: check
 install:
@@ -22,7 +37,7 @@ install:
 
 # systemd : Enable firewall to run at boot on systemd capable systems
 systemd:
-	printf '' >/dev/null
+	cp systemd/.config /etc/systemd/system/fw.service	
 
 
 # sysv : Enable firewall to run at boot on SysV capable systems
@@ -41,6 +56,4 @@ check:
 		printf "IPTables not installed, exiting.\n" > /dev/stderr; \
 		exit 5; \
 	}
-
-
 

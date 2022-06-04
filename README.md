@@ -1,6 +1,6 @@
 # fw  
 
-A simple firewall script.
+The 2 minute firewall.
 
 
 ## Installation
@@ -11,11 +11,9 @@ output a list of possible targets.
 
 The most pertinent targets are:
 
-`make install` - Which installs the firewall.
+`make install` - Which installs the firewall script.
 
 `make systemd` - Which enables the firewall to run via systemd.
-
-`make sysv` - Which enables the firewall to run on SysV init-capable systems.
 
 `make check` - Checks for iptables, a necessary dependency.
 
