@@ -34,11 +34,6 @@ install:
 	echo "If it's working as expected, you can configure it to run at boot with 'systemctl enable fw'"
 	
 
-# pkg : Something with packages
-pkg:
-	cd ../ && tar czf firewall.tgz firewall/
-
-
 # check : Checks for iptables
 check:
 	@test -x $(IPTABLES) && echo "IpTables is present." || { \

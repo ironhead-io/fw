@@ -4,7 +4,9 @@ A 2 minute firewall.
 
 ## Quickstart
 
-Run `make menuconfig` to set up your firewall configuration, then `make install` to install it.  You can test it first with `make test`, which will enable your ruleset for 30 seconds and disable it (should something be misconfigured and you can't access your machine).
+Run `make menuconfig` to set up your firewall configuration, then `make install` to install it.
+
+`fw` uses systemd to manage it's deployment, so using `systemctl start fw` after a successful install will get it going.
 
 
 ## Installation
@@ -53,7 +55,7 @@ h, --help               Show help.
 </pre>
 
 
-### Quickstart / Recipes 
+### From the Command Line 
 
 A typical invocation of `fw` will look something like:
 

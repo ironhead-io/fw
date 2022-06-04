@@ -1,3 +1,4 @@
 systemd/.config
+.cmd
 src.vim
 nft
