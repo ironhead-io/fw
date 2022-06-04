@@ -34,7 +34,13 @@ install:
 	@echo "Test your configuration with 'systemctl start fw'"
 	@echo "If it's working as expected, you can configure it to run at boot with 'systemctl enable fw'"
 	@echo
-	
+
+
+# test : Temporarily activates firewall rules and stops them after a 30 second delay
+test:
+	systemctl start fw 
+	sleep 30 && systemctl stop fw
+
 
 # check : Checks for iptables
 check:
